@@ -158,11 +158,7 @@ jobs:
         kernel_flavor:  # this must be in matrix for excludes, but reference inputs.kernel_flavor in workflow
           - ${{ inputs.kernel_flavor }}
         cfile_suffix:
-          - common
-          - extra
-          - nvidia
-          - nvidia-open
-          - zfs
+          - acpi_call
         exclude:
           # extra
           - kernel_flavor: main
@@ -411,7 +407,7 @@ jobs:
         env:
           TAGS: ${{ steps.push.outputs.outputs && fromJSON(steps.push.outputs.outputs).digest }}
           COSIGN_EXPERIMENTAL: false
-          COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
 
       - name: Echo outputs
         if: github.event_name != 'pull_request'

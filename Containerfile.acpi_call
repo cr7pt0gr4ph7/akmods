@@ -1,0 +1,42 @@
+###
+### Containerfile.acpi_call - used to build extra kmods
+###
+
+ARG FEDORA_MAJOR_VERSION="${FEDORA_MAJOR_VERSION:-42}"
+ARG BUILDER_IMAGE="${BUILDER_IMAGE:-quay.io/fedora/fedora}"
+ARG BUILDER_BASE="${BUILDER_IMAGE}:${FEDORA_MAJOR_VERSION}"
+FROM ${BUILDER_BASE} AS builder
+
+ARG FEDORA_MAJOR_VERSION="${FEDORA_MAJOR_VERSION:-42}"
+ARG KERNEL_FLAVOR="${KERNEL_FLAVOR:-main}"
+ARG RPMFUSION_MIRROR=""
+ARG DUAL_SIGN="true"
+
+COPY build_files/extra build_files/shared /tmp/
+COPY certs /tmp/certs
+
+# files for akmods
+ADD https://copr.fedorainfracloud.org/coprs/ublue-os/akmods/repo/fedora-${FEDORA_MAJOR_VERSION}/ublue-os-akmods-fedora-${FEDORA_MAJOR_VERSION}.repo \
+    /tmp/ublue-os-akmods-addons/rpmbuild/SOURCES/_copr_ublue-os-akmods.repo
+ADD https://negativo17.org/repos/fedora-multimedia.repo \
+    /tmp/ublue-os-akmods-addons/rpmbuild/SOURCES/negativo17-fedora-multimedia.repo
+ADD https://copr.fedorainfracloud.org/coprs/cr7pt0gr4ph7/acpi_call/repo/fedora-${FEDORA_MAJOR_VERSION}/cr7pt0gr4ph7-acpi_call-fedora-${FEDORA_MAJOR_VERSION}.repo \
+    /tmp/ublue-os-akmods-addons/rpmbuild/SOURCES/_copr_cr7pt0gr4ph7-acpi_call.repo
+
+RUN --mount=type=bind,src=kernel_cache,dst=/tmp/kernel_cache,ro \
+    --mount=type=cache,dst=/var/cache/dnf \
+    ls -sh /tmp/kernel_cache; \
+    if grep -qv "surface" <<< "${KERNEL_FLAVOR}"; then \
+        export KERNEL_NAME="kernel" \
+    ; else \
+        export KERNEL_NAME="kernel-surface" \
+    ; fi && \
+    /tmp/build-prep.sh && \
+    /tmp/build-kmod-acpi-call.sh && \
+    /tmp/dual-sign.sh && \
+    /tmp/build-post.sh
+
+FROM scratch
+
+COPY --from=builder /var/cache/kernel-rpms /kernel-rpms
+COPY --from=builder /var/cache/rpms /rpms
